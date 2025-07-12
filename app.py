@@ -22,7 +22,6 @@ class PilgrimageSpot:
 class PilgrimageMapApp:
     def __init__(self):
         self.setup_page()
-        self.setup_gemini()
         
     def setup_page(self):
         st.set_page_config(
@@ -42,7 +41,8 @@ class PilgrimageMapApp:
             api_key = st.text_input(
                 "Gemini API Key",
                 type="password",
-                help="Google AI StudioでAPIキーを取得してください"
+                help="Google AI StudioでAPIキーを取得してください",
+                key="gemini_api_key_input"
             )
             
             if api_key:
@@ -224,22 +224,24 @@ class PilgrimageMapApp:
             return
         
         # 検索フォーム
-        with st.form("search_form"):
+        with st.form("search_form", clear_on_submit=False):
             col1, col2 = st.columns([3, 1])
             
             with col1:
                 search_query = st.text_input(
                     "🔍 検索キーワード",
-                    placeholder="例: 東京, 君の名は。, 鬼滅の刃"
+                    placeholder="例: 東京, 君の名は。, 鬼滅の刃",
+                    key="search_query_input"
                 )
             
             with col2:
                 search_type = st.selectbox(
                     "検索タイプ",
-                    ["地域名", "作品名"]
+                    ["地域名", "作品名"],
+                    key="search_type_select"
                 )
             
-            submit_button = st.form_submit_button("🔍 検索")
+            submit_button = st.form_submit_button("🔍 検索", type="primary")
         
         # 検索実行
         if submit_button and search_query:
@@ -252,7 +254,7 @@ class PilgrimageMapApp:
                 map_obj = self.create_map(spots)
                 
                 # 地図を表示
-                st_folium(map_obj, width=700, height=500)
+                st_folium(map_obj, width=700, height=500, key="pilgrimage_map")
                 
                 # 詳細情報表示
                 self.display_spot_details(spots)
