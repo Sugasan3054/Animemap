@@ -48,31 +48,55 @@ class PilgrimageMapApp:
             if api_key:
                 try:
                     genai.configure(api_key=api_key)
-                    # 利用可能なモデルを試す順序で設定
-                    model_names = [
-                        'gemini-2.5-flash',
-                        'gemini-1.5-flash',
-                        'gemini-1.5-pro',
-                        'gemini-2.5-pro'
-                    ]
                     
-                    model_set = False
-                    for model_name in model_names:
-                        try:
-                            self.model = genai.GenerativeModel(model_name)
-                            # テスト生成で接続確認
-                            test_response = self.model.generate_content("test")
-                            st.success(f"✅ API接続完了 ({model_name})")
-                            model_set = True
-                            break
-                        except Exception as e:
-                            continue
-                    
-                    if not model_set:
-                        st.error("❌ 利用可能なモデルが見つかりません")
+                    # 利用可能なモデルを取得
+                    try:
+                        available_models = []
+                        for model in genai.list_models():
+                            if 'generateContent' in model.supported_generation_methods:
+                                available_models.append(model.name)
+                        
+                        st.info(f"利用可能なモデル: {', '.join(available_models)}")
+                        
+                        # 推奨モデルを順番に試す
+                        preferred_models = [
+                            'models/gemini-2.0-flash-exp',
+                            'models/gemini-1.5-flash',
+                            'models/gemini-1.5-pro',
+                            'models/gemini-2.5-flash',
+                            'models/gemini-2.5-pro'
+                        ]
+                        
+                        model_set = False
+                        for model_name in preferred_models:
+                            if model_name in available_models:
+                                try:
+                                    self.model = genai.GenerativeModel(model_name)
+                                    st.success(f"✅ API接続完了 ({model_name})")
+                                    model_set = True
+                                    break
+                                except Exception as e:
+                                    continue
+                        
+                        # 推奨モデルが見つからない場合、最初の利用可能なモデルを使用
+                        if not model_set and available_models:
+                            try:
+                                self.model = genai.GenerativeModel(available_models[0])
+                                st.success(f"✅ API接続完了 ({available_models[0]})")
+                                model_set = True
+                            except Exception as e:
+                                st.error(f"❌ モデル初期化エラー: {str(e)}")
+                                return False
+                        
+                        if not model_set:
+                            st.error("❌ 利用可能なモデルが見つかりません")
+                            return False
+                        
+                        return True
+                        
+                    except Exception as e:
+                        st.error(f"❌ モデル一覧取得エラー: {str(e)}")
                         return False
-                    
-                    return True
                 except Exception as e:
                     st.error(f"❌ API接続エラー: {str(e)}")
                     return False
