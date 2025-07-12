@@ -8,6 +8,7 @@ import requests
 from typing import Dict, List, Optional
 import os
 from dataclasses import dataclass
+import hashlib
 
 @dataclass
 class PilgrimageSpot:
@@ -269,6 +270,14 @@ class PilgrimageMapApp:
             st.info("👆 まず左のサイドバーでGemini APIキーを設定してください")
             return
         
+        # セッション状態の初期化
+        if 'search_results' not in st.session_state:
+            st.session_state.search_results = []
+        if 'last_search_query' not in st.session_state:
+            st.session_state.last_search_query = ""
+        if 'last_search_type' not in st.session_state:
+            st.session_state.last_search_type = ""
+        
         # 検索フォーム
         with st.form("search_form", clear_on_submit=False):
             col1, col2 = st.columns([3, 1])
@@ -294,19 +303,39 @@ class PilgrimageMapApp:
             with st.spinner("聖地を検索中..."):
                 spots = self.search_pilgrimage_spots(search_query, search_type)
             
-            if spots:
-                # 地図表示
-                st.subheader("🗾 聖地巡礼マップ")
-                map_obj = self.create_map(spots)
-                
-                # 地図を表示
-                st_folium(map_obj, width=700, height=500, key="pilgrimage_map")
-                
-                # 詳細情報表示
-                self.display_spot_details(spots)
-                
-            else:
-                st.warning("検索結果が見つかりませんでした。別のキーワードで試してください。")
+            # 検索結果をセッション状態に保存
+            st.session_state.search_results = spots
+            st.session_state.last_search_query = search_query
+            st.session_state.last_search_type = search_type
+        
+        # 検索結果がある場合に表示
+        if st.session_state.search_results:
+            spots = st.session_state.search_results
+            
+            # 地図表示
+            st.subheader("🗾 聖地巡礼マップ")
+            
+            # 検索クエリをハッシュ化して一意のキーを作成
+            query_hash = hashlib.md5(
+                f"{st.session_state.last_search_query}_{st.session_state.last_search_type}".encode()
+            ).hexdigest()[:8]
+            
+            map_obj = self.create_map(spots)
+            
+            # 地図を表示（一意のキーを使用）
+            map_data = st_folium(
+                map_obj, 
+                width=700, 
+                height=500, 
+                key=f"pilgrimage_map_{query_hash}",
+                returned_objects=["last_object_clicked"]
+            )
+            
+            # 詳細情報表示
+            self.display_spot_details(spots)
+            
+        elif submit_button:
+            st.warning("検索結果が見つかりませんでした。別のキーワードで試してください。")
         
         # 使い方の説明
         with st.expander("ℹ️ 使い方"):
