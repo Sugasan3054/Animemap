@@ -48,8 +48,30 @@ class PilgrimageMapApp:
             if api_key:
                 try:
                     genai.configure(api_key=api_key)
-                    self.model = genai.GenerativeModel('gemini-pro')
-                    st.success("✅ API接続完了")
+                    # 利用可能なモデルを試す順序で設定
+                    model_names = [
+                        'gemini-2.5-flash',
+                        'gemini-1.5-flash',
+                        'gemini-1.5-pro',
+                        'gemini-2.5-pro'
+                    ]
+                    
+                    model_set = False
+                    for model_name in model_names:
+                        try:
+                            self.model = genai.GenerativeModel(model_name)
+                            # テスト生成で接続確認
+                            test_response = self.model.generate_content("test")
+                            st.success(f"✅ API接続完了 ({model_name})")
+                            model_set = True
+                            break
+                        except Exception as e:
+                            continue
+                    
+                    if not model_set:
+                        st.error("❌ 利用可能なモデルが見つかりません")
+                        return False
+                    
                     return True
                 except Exception as e:
                     st.error(f"❌ API接続エラー: {str(e)}")
